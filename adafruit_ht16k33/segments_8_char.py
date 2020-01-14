@@ -211,3 +211,57 @@ class Seg14x8(HT16K33):
             places += 1
         self._text(string[:places])
         self._auto_write = auto_write
+
+class Seg7x8(Seg14x8):
+    """Numeric 7-segment display. It has the same methods as the alphanumeric display, but only
+       supports displaying a limited set of characters."""
+    # removed colon support to add full eight digits
+    POSITIONS = (0, 2, 4, 6, 8, 10, 12, 14) #  The positions of characters.
+
+    def scroll(self, count=1):
+        #Scroll the display by specified number of places.
+        if count >= 0:
+            offset = 0
+        else:
+            offset = 1
+        for i in range(7): # change to 5 for six digit display
+            self._set_buffer(self.POSITIONS[i + offset],
+                             self._get_buffer(self.POSITIONS[i + count]))
+
+    def _push(self, char):
+        #Scroll the display and add a character at the end.
+        if char in ':;':
+            self._put(char)
+        else:
+            if char != '.' or self._get_buffer(self.POSITIONS[7]) & 0b10000000: # change to 5 for six digit display
+                self.scroll()
+                self._put(' ', 7) # change to 5 for six digit display
+            self._put(char, 7) # change to 5 for six digit display
+
+    def _put(self, char, index=0):
+        """Put a character at the specified place."""
+        if not 0 <= index <= 7: # change to 5 for six digit display
+            return
+        char = char.lower()
+        index = self.POSITIONS[index]
+        if char == '.':
+            self._set_buffer(index, self._get_buffer(index) | 0b10000000)
+            return
+        elif char in 'abcdef':
+            character = ord(char) - 97 + 10
+        elif char == '-':
+            character = 16
+        elif char in '0123456789':
+            character = ord(char) - 48
+        elif char == ' ':
+            self._set_buffer(index, 0x00)
+            return
+        elif char == ':':
+            self._set_buffer(4, 0x02)
+            return
+        elif char == ';':
+            self._set_buffer(4, 0x00)
+            return
+        else:
+            return
+        self._set_buffer(index, NUMBERS[character])
